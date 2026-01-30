@@ -1,5 +1,5 @@
-const ToolBar = () => {
+const Toolbar = () => {
   return <div className="toolbar"></div>;
 };
 
-export default ToolBar;
+export default Toolbar;
