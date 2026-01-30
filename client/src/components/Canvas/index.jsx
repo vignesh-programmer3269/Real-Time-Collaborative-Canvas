@@ -62,7 +62,6 @@ const Canvas = ({ color, width, roomId, userName }) => {
     const bgCanvas = bgCanvasRef.current;
     const uiCanvas = uiCanvasRef.current;
     const bgCtx = bgCanvas.getContext("2d");
-    const uiCtx = uiCanvas.getContext("2d");
 
     // Initial Resize
     const handleResize = () => {
