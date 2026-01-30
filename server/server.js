@@ -34,6 +34,30 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
+  socket.on("drawing_live", ({ roomId, start, end, style }) => {
+    // Broadcast live drawing segments to others (volatile for performance)
+    socket.volatile.to(roomId).emit("drawing_live", { start, end, style });
+  });
+
+  socket.on("draw_finish", ({ roomId, data }) => {
+    const room = roomManager.getRoom(roomId);
+    if (!room) return;
+
+    room.state.addDrawAction(socket.id, data);
+    // We don't necessarily broadcast this if 'drawing_live' covered it.
+    // But we could broadcast 'history_update' if we wanted strict sync.
+    // For now, rely on initial sync + live updates.
+  });
+
+  socket.on("cursor_move", ({ roomId, x, y }) => {
+    const room = roomManager.getRoom(roomId);
+    if (!room) return;
+    room.updateUserCursor(socket.id, x, y);
+    socket.volatile
+      .to(roomId)
+      .emit("cursor_update", { userId: socket.id, x, y });
+  });
+
   socket.on("undo", ({ roomId }) => {
     const room = roomManager.getRoom(roomId);
     if (!room) return;
