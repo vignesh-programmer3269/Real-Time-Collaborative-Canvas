@@ -2,6 +2,14 @@
 
 A seamless real-time collaborative drawing application that allows multiple users to draw on a shared canvas simultaneously. Built with a React frontend and a Node.js/Socket.io backend.
 
+# Live app link
+
+```bash
+   https://real-time-collaborative-canvas-tan.vercel.app/
+```
+
+I used free triel of Render which might take 1-2 mins to start the backend server
+
 ## Features
 
 - **Real-time Drawing**: See other users' brush strokes as they happen.
