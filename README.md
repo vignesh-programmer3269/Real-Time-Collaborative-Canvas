@@ -1,102 +1,62 @@
-# Collaborative Canvas
+# Real-Time Collaborative Canvas
 
-A real-time collaborative whiteboard application that allows multiple users to draw together simultaneously on a shared canvas.
+A seamless real-time collaborative drawing application that allows multiple users to draw on a shared canvas simultaneously. Built with a React frontend and a Node.js/Socket.io backend.
 
 ## Features
 
-- **Real-time Collaboration**: See other users' cursors and drawing in real-time.
-- **Tools**: Pencil and Eraser with customizable colors and widths.
-- **Room System**: Join specific rooms to collaborate with specific people.
-- **Undo/Redo**: Global undo and redo functionality for the shared canvas.
-- **Responsive Design**: Works across different screen sizes.
+- **Real-time Drawing**: See other users' brush strokes as they happen.
+- **Live Cursors**: Track the presence and activity of other collaborators.
+- **Global Undo/Redo**: Revert or restore actions across the entire session.
+- **Adaptive UI**: Responsive toolbar and canvas that fits any screen size.
+- **Eraser Mode**: Toggle between drawing and erasing with ease.
 
----
+## Installation and Running
 
-## Installation and Setup
+To get the project up and running locally, follow these steps:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v14 or higher)
-- [npm](https://www.npmjs.com/)
+- Node.js (v16 or higher)
+- npm
 
-### 1. Clone the repository
+### Setup
 
-```bash
-# If you haven't already
-git clone <your-repo-url>
-cd "Collabrative Canvas"
-```
+1. **Install dependencies for all components:**
 
-### 2. Install Dependencies
+   ```bash
+   npm run install:all
+   ```
 
-You need to install dependencies for both the client and the server.
+   _This command installs dependencies in both the `client` and `server` folders._
 
-**Server:**
+2. **Start the application:**
 
-```bash
-cd server
-npm install
-```
+   ```bash
+   npm start
+   ```
 
-**Client:**
+   _This will concurrently start the backend server (port 8000) and the frontend dev server (port 3000)._
 
-```bash
-cd ../client
-npm install
-```
+3. **Access the app:**
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 3. Run the Project
+## Testing with Multiple Users
 
-You need to have two terminal windows open: one for the server and one for the client.
+To test the collaborative features:
 
-**Start the Server:**
-
-```bash
-cd server
-npm start
-```
-
-_The server will run on `http://localhost:8000`_
-
-**Start the Client:**
-
-```bash
-cd client
-npm start
-```
-
-_The client will run on `http://localhost:3000`_
-
----
-
-## How to Test with Multiple Users
-
-To see the collaboration in action, you can simulate multiple users on your local machine:
-
-1. Open your browser and navigate to `http://localhost:3000`.
-2. Enter a name and a Room ID (e.g., "Room1").
-3. Open a **New Incognito Window** (or a different browser like Firefox/Edge).
-4. Navigate to `http://localhost:3000` again.
-5. Enter a different name but use the **same Room ID** ("Room1").
-6. You should now see the other user's cursor moving and their drawings appearing instantly on your screen.
-
----
+1. Open the application in your primary browser.
+2. Open the same URL ([http://localhost:3000](http://localhost:3000)) in an Incognito/Private window or a different browser (e.g., Firefox, Edge).
+3. Enter different names for each user.
+4. Draw on one canvas and watch the strokes and cursor appear instantly on the other window.
 
 ## Known Issues or Limitations
 
-- **Transient Connections**: If the server restarts, currently active room data (history) is kept in memory and will be reset.
-- **Canvas Scaling**: Drawings are coordinate-based; large differences in window size between users might lead to slight visual offsets if the aspect ratio isn't maintained.
-- **Global Undo/Redo**: Undo/Redo is currently global for the room. If User A undoes, it removes the last action in the room, even if it was made by User B.
-
----
+- **Canvas Persistence**: Since the project doesn't use a persistent database, the canvas history is cleared when the backend server restarts.
+- **Global Undo/Redo**: The current implementation for undo/redo is global (LIFO), meaning it undoes the very last action taken in the room, regardless of who performed it.
+- **High Latency Environments**: In extremely slow network conditions, live stroke segments might appear slightly fragmented before the final synchronization.
 
 ## Total Time Spent
 
-**Approximately: 12-14 Hours**
-
-- _Initial Setup & Research_: 2 hours
-- _Environment Migration (Vite to CRA)_: 2 hours
-- _Canvas Engine & Drawing Logic_: 3 hours
-- _Socket.io Integration (Real-time)_: 3 hours
-- _State Management (Undo/Redo)_: 2 hours
-- _UI/UX Refinement & Documentation_: 2 hours
+- **Estimated Development Time**: ~10 hours
+- **Core Implementation**: ~8 hours (React, Socket.io, Canvas API)
+- **Deployment & Debugging**: ~4 hours (Render, CORS, Environment config) ~3 hours deploying backend in Railway and change to Render due to required of upgrade

@@ -1,83 +1,81 @@
-# Project Architecture
+# Architecture Documentation - Collaborative Canvas
 
-This document outlines the technical design, data flow, and key engineering decisions made for the Collaborative Canvas.
+This document outlines the technical architecture, data flow, and design decisions of the Real-Time Collaborative Canvas.
+
+## Project Structure
+
+```text
+├── client/          # React Frontend
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Canvas/   # Core drawing logic & Canvas API
+│   │   │   └── Toolbar/  # UI Controls
+│   │   └── socket.js     # Socket.io client configuration
+├── server/          # Node.js/Socket.io Backend
+│   ├── server.js        # Entry point & event handlers
+│   ├── rooms.js         # Room management logic
+│   └── state-manager.js # History and undo/redo handling
+└── ARCHITECTURE.md      # This document
+```
 
 ## Data Flow Diagram
 
-The application follows a star topology where the server acts as the central hub for state synchronization.
+The following diagram illustrates how drawing data moves from a source user to all other participants in a room.
 
 ```mermaid
 sequenceDiagram
-    participant UserA as Client A (User)
-    participant Server as Node.js Server
-    participant UserB as Client B (User)
+    participant User A (Client)
+    participant Server (Socket.io)
+    participant User B (Client)
+    participant User C (Client)
 
-    Note over UserA, UserB: Drawing Phase
-    UserA->>Server: "drawing_live" (startPos, endPos, style)
-    Server-->>UserB: "drawing_live" (broadcast to others)
-    Note right of UserB: Visual update on canvas
-
-    UserA->>Server: "draw_finish" (complete path points)
-    Server->>Server: Update Room State (History)
-
-    Note over UserA, UserB: Client Sync
-    UserB->>Server: "request_history"
-    Server-->>UserB: "history_response" (full canvas data)
+    User A->>User A: Start Drawing (Local Render)
+    loop Every move event
+        User A->>Server: emit('drawing_live', segment)
+        Server-->>User B: volatile emit('drawing_live')
+        Server-->>User C: volatile emit('drawing_live')
+        User B->>User B: Render Segment (Immediate)
+        User C->>User C: Render Segment (Immediate)
+    end
+    User A->>Server: emit('draw_finish', fullStroke)
+    Server->>Server: Update Global History
+    Server-->>Server: Clear Redo Stack
 ```
-
-1. **Input**: User interacts with the HTML5 Canvas via Mouse/Touch events.
-2. **Transient Update**: Local segments are drawn immediately and emitted via `drawing_live` for zero-latency feedback to other users.
-3. **Persistence**: On `mouseUp`, the full stroke (array of points) is sent to the server to be added to the room's global history.
-
----
 
 ## WebSocket Protocol
 
-Communication is handled via **Socket.io**.
+The application uses Socket.io for bidirectional, low-latency communication.
 
-### Events Sent (Client -> Server)
+### Key Events
 
-| Event           | Payload                         | Description                                   |
-| :-------------- | :------------------------------ | :-------------------------------------------- |
-| `join_room`     | `{ roomId, user }`              | Joins a collaboration room.                   |
-| `drawing_live`  | `{ roomId, start, end, style }` | Volatile real-time line segment updates.      |
-| `draw_finish`   | `{ roomId, data }`              | Sends the final completed stroke to be saved. |
-| `cursor_move`   | `{ roomId, x, y }`              | Updates user cursor position.                 |
-| `undo` / `redo` | `{ roomId }`                    | Triggers global undo/redo logic.              |
-
-### Events Received (Server -> Client)
-
-| Event           | Payload                 | Description                                  |
-| :-------------- | :---------------------- | :------------------------------------------- |
-| `init_state`    | `{ history, users }`    | Initial synchronization on joining.          |
-| `drawing_live`  | `{ start, end, style }` | Renders another user's line segment.         |
-| `cursor_update` | `{ userId, x, y }`      | Moves another user's cursor on the UI layer. |
-| `undo` / `redo` | `{ actionId }`          | Commands client to refresh history.          |
-
----
+| Event           | Type | Payload                 | Description                                               |
+| :-------------- | :--- | :---------------------- | :-------------------------------------------------------- |
+| `join_room`     | Send | `{ roomId, user }`      | Authenticates and joins a specific room.                  |
+| `init_state`    | Recv | `{ history, users }`    | Syncs the existing canvas state upon joining.             |
+| `drawing_live`  | Both | `{ start, end, style }` | Real-time transmission of incremental line segments.      |
+| `draw_finish`   | Send | `{ roomId, data }`      | Signals the completion of a stroke for history recording. |
+| `cursor_move`   | Send | `{ roomId, x, y }`      | Updates the server on the user's cursor position.         |
+| `undo` / `redo` | Both | `{ roomId }`            | Triggers a global undo/redo action.                       |
 
 ## Undo / Redo Strategy
 
-The system uses a **Global Command Pattern** managed on the server.
+The application implements a **Global Undo/Redo** system managed by the `StateManager` on the server.
 
-- **Global History**: The server maintains a stack of actions (`globalHistory`) for each room.
-- **Redo Stack**: When an action is undone, it's moved from `globalHistory` to a `redoStack`.
-- **Synchronization**: When an undo/redo occurs, the server emits an event. Clients then request the updated history (or the server pushes it) to ensure all users see the exact same state.
-
----
+1. **Stacks**: The server maintains a `globalHistory` stack (all completed strokes) and a `redoStack` (all undone strokes).
+2. **Undo Action**: When an `undo` event is received, the server pops the top action from `globalHistory`, pushes it to `redoStack`, and broadcasts a refresh command to all clients.
+3. **Redo Action**: When a `redo` event is received, the server pops from `redoStack` back to `globalHistory`.
+4. **Invalidation**: Any new drawing action (`draw_finish`) clears the `redoStack` to maintain consistency.
 
 ## Performance Decisions
 
-1. **Volatile Broadcasting**: Live drawing segments and cursor movements are sent using `socket.volatile`. This ensures that if a network packet is dropped, it isn't re-sent, preventing "lag spikes" or "rubber-banding" during fast drawing.
-2. **Layered Canvases**:
-   - **BG Canvas**: Handles the actual persistent painting.
-   - **UI Canvas**: Handles high-frequency updates like other users' cursors and names using `requestAnimationFrame`. This prevents redrawing the entire drawing history 60 times a second.
-3. **Point Throttling**: Only relevant movement segments are captured to prevent flooding the server with thousands of redundant identical data points.
-
----
+- **Volatile Broadcasts**: Live drawing segments and cursor movements are broadcast as `volatile`. This means if a user has a temporary connection glitch, these transient updates are dropped rather than queued, preventing "lag spikes" or "catch-up bursts" that would degrade the real-time experience.
+- **Dual Layer Canvas**: The frontend uses two `<canvas>` elements overlapping.
+  1. **Background Layer**: Contains the actual drawing. This is only redrawn when necessary (e.g., global undo/redo).
+  2. **UI Layer**: Contains cursors and temporary UI elements. This layer is cleared and redrawn every animation frame (`requestAnimationFrame`) to ensure smooth cursor movement without affecting the drawing data.
+- **Incremental Updates**: Instead of sending the entire canvas state every frame, only small line segments are transmitted during an active stroke.
 
 ## Conflict Handling
 
-- **Atomic History**: Because the server processes events sequentially (Node.js single-threaded event loop), actions are naturally ordered. Each action is assigned a unique `UUID`.
-- **Non-destructive Overlays**: Drawing is additive. Simultaneous users drawing in the same spot simply results in overlapping lines, modeled after real-world whiteboards.
-- **State Reconciliation**: If a client goes out of sync, they can emit `request_history` at any time to pull the latest "Ground Truth" from the server.
+- **Simultaneous Drawing**: Since each stroke is uniquely identified and rendered incrementally, multiple users can draw at the same time without overwriting each other's work.
+- **Race Conditions**: The server acts as the single source of truth. If two users click "Undo" nearly simultaneously, the server processes them sequentially, resulting in the two most recent actions being undone in the order they were processed.
+- **State Synchronization**: When a user joins, they receive the full `globalHistory`. If any client goes out of sync (e.g., during an undo), the server sends the full history response to ensure all clients converge on the same visual state.

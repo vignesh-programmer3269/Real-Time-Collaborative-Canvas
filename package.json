@@ -1,0 +1,14 @@
+{
+  "name": "real-time-collaborative-canvas",
+  "version": "1.0.0",
+  "description": "A real-time collaborative canvas app built with React, Socket.io, and Express.",
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
