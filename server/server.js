@@ -10,7 +10,10 @@ app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://real-time-collaborative-canvas-tan.vercel.app",
+    origin: [
+      "https://real-time-collaborative-canvas-tan.vercel.app",
+      "http://localhost:3000",
+    ],
     methods: ["GET", "POST"],
   },
 });
