@@ -7,6 +7,11 @@ const roomManager = require("./rooms");
 const app = express();
 app.use(cors());
 
+// Health check route for Railway
+app.get("/", (req, res) => {
+  res.status(200).send("Server is running");
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
